@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -82,18 +83,20 @@ public class TicketController {
     public ResponseEntity<TicketResponseDTO> getTicketById(
             @PathVariable String id,
             Authentication authentication) {
-        return ticketService.findById(id)
-                .map(ticket -> {
-                    String externalId = getExternalIdFromAuthentication(authentication);
-                    if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
-                        if (!ticket.getCustomerExternalId().equals(externalId)) {
-                            return ResponseEntity.<TicketResponseDTO>status(HttpStatus.FORBIDDEN).build();
-                        }
-                    }
-                    TicketResponseDTO response = ticketMapper.toDTO(ticket);
-                    return ResponseEntity.ok(response);
-                })
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        Optional<Ticket> ticketOpt = ticketService.findById(id);
+        if (ticketOpt.isEmpty()) {
+            return ResponseEntity.<TicketResponseDTO>status(HttpStatus.NOT_FOUND).build();
+        }
+
+        Ticket ticket = ticketOpt.get();
+        String externalId = getExternalIdFromAuthentication(authentication);
+        if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+            if (!ticket.getCustomerExternalId().equals(externalId)) {
+                return ResponseEntity.<TicketResponseDTO>status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+        TicketResponseDTO response = ticketMapper.toDTO(ticket);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/comments")
