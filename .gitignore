@@ -1,0 +1,114 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# IDE - Eclipse
+.classpath
+.project
+.settings/
+bin/
+.metadata
+
+# IDE - VS Code
+.vscode/
+
+# IDE - Cursor
+.cursor/
+
+# IDE - NetBeans
+nbproject/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# IDE - General
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Compiled class files
+*.class
+
+# Package files
+*.jar
+!**/src/main/**/*.jar
+!**/src/test/**/*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Spring Boot
+application-local.yml
+application-dev.yml
+application-*.yml
+!application.yml
+!application-*.yml.example
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Test coverage
+.nyc_output/
+coverage/
+*.lcov
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.cache
+
+# Build files
+build/
+dist/
+out/
+
+# H2 Database (if used for testing)
+*.db
+*.mv.db
+*.trace.db
+
+# Lombok
+lombok.config
+
+# Spring Boot Actuator
+heap-dump.hprof
