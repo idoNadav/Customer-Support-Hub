@@ -8,7 +8,11 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +39,41 @@ public class CustomerService {
         
         customer.setOpenTicketCount(customer.getOpenTicketCount() + 1);
         customerRepository.save(customer);
+    }
+
+    @Transactional
+    public Customer updateCustomer(String externalId, Customer customerUpdate) {
+        Customer customer = customerRepository.findByExternalId(externalId)
+                .orElseThrow(() -> new IllegalArgumentException("Customer not found: " + externalId));
+        
+        if (customerUpdate.getName() != null) {
+            customer.setName(customerUpdate.getName());
+        }
+        if (customerUpdate.getEmail() != null) {
+            customer.setEmail(customerUpdate.getEmail());
+        }
+        
+        return customerRepository.save(customer);
+    }
+
+    public List<Customer> searchCustomers(String name, String email, String externalId) {
+        Set<Customer> resultSet = new HashSet<>();
+        
+        if (name != null && !name.isBlank()) {
+            resultSet.addAll(customerRepository.findByNameContainingIgnoreCase(name));
+        }
+        if (email != null && !email.isBlank()) {
+            resultSet.addAll(customerRepository.findByEmailContainingIgnoreCase(email));
+        }
+        if (externalId != null && !externalId.isBlank()) {
+            resultSet.addAll(customerRepository.findByExternalIdContaining(externalId));
+        }
+        
+        if (name == null && email == null && externalId == null) {
+            return customerRepository.findAll();
+        }
+        
+        return new ArrayList<>(resultSet);
     }
 }
 
