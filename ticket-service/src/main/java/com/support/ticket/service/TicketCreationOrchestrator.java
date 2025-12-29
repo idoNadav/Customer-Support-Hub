@@ -1,6 +1,8 @@
 package com.support.ticket.service;
 
-import com.support.customer.service.CustomerService;
+import com.support.customer.service.interfaces.ICustomerService;
+import com.support.ticket.service.interfaces.ITicketCreationOrchestrator;
+import com.support.ticket.service.interfaces.ITicketService;
 import com.support.ticket.model.Ticket;
 import com.support.ticket.model.TicketEvent;
 import com.support.ticket.model.enums.SyncStatus;
@@ -15,12 +17,13 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class TicketCreationOrchestrator {
+public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
 
-    private final TicketService ticketService;
-    private final CustomerService customerService;
+    private final ITicketService ticketService;
+    private final ICustomerService customerService;
 
     public Ticket createTicket(Ticket ticket, String idempotencyKey) {
+        
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             idempotencyKey = UUID.randomUUID().toString();
         }

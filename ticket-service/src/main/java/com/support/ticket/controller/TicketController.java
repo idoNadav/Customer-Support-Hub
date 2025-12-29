@@ -33,15 +33,26 @@ public class TicketController {
     private final TicketMapper ticketMapper;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'AGENT', 'ADMIN')")
+    @PreAuthorize("@roles.hasAnyTicketCreateRole(authentication)")
     public ResponseEntity<TicketResponseDTO> createTicket(
             @Valid @RequestBody TicketRequestDTO ticketRequest,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            Authentication authentication) {
+
         try {
+            String externalId = getExternalIdFromAuthentication(authentication);
+            
+            if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+                if (!ticketRequest.getCustomerExternalId().equals(externalId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+            }
+            
             Ticket ticket = ticketMapper.toEntity(ticketRequest);
             Ticket createdTicket = ticketCreationOrchestrator.createTicket(ticket, idempotencyKey);
             TicketResponseDTO response = ticketMapper.toDTO(createdTicket);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (RuntimeException e) {
@@ -50,39 +61,46 @@ public class TicketController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
+    @PreAuthorize("@roles.hasAnyTicketReadAllRole(authentication)")
     public ResponseEntity<List<TicketResponseDTO>> getTickets(
             @RequestParam(required = false) TicketStatus status,
             @RequestParam(required = false) Priority priority,
             @RequestParam(required = false) String customerExternalId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+
         List<Ticket> tickets = ticketService.findTickets(status, priority, customerExternalId, fromDate, toDate);
         List<TicketResponseDTO> response = tickets.stream()
                 .map(ticketMapper::toDTO)
                 .collect(Collectors.toList());
+                
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("@roles.hasCustomerReadOwnRole(authentication)")
     public ResponseEntity<List<TicketResponseDTO>> getOwnTickets(
             Authentication authentication,
             @RequestParam(required = false) TicketStatus status,
             @RequestParam(required = false) Priority priority) {
+
         String customerExternalId = getExternalIdFromAuthentication(authentication);
+
         List<Ticket> tickets = ticketService.findTicketsByCustomer(customerExternalId, status, priority);
+
         List<TicketResponseDTO> response = tickets.stream()
                 .map(ticketMapper::toDTO)
                 .collect(Collectors.toList());
+
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'AGENT', 'ADMIN')")
+    @PreAuthorize("@roles.hasAnyTicketReadRole(authentication)")
     public ResponseEntity<TicketResponseDTO> getTicketById(
             @PathVariable String id,
             Authentication authentication) {
+
         Optional<Ticket> ticketOpt = ticketService.findById(id);
         if (ticketOpt.isEmpty()) {
             return ResponseEntity.<TicketResponseDTO>status(HttpStatus.NOT_FOUND).build();
@@ -90,48 +108,70 @@ public class TicketController {
 
         Ticket ticket = ticketOpt.get();
         String externalId = getExternalIdFromAuthentication(authentication);
+
         if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
             if (!ticket.getCustomerExternalId().equals(externalId)) {
                 return ResponseEntity.<TicketResponseDTO>status(HttpStatus.FORBIDDEN).build();
             }
         }
+
         TicketResponseDTO response = ticketMapper.toDTO(ticket);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/comments")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'AGENT', 'ADMIN')")
+    @PreAuthorize("@roles.hasAnyTicketReadRole(authentication)")
     public ResponseEntity<TicketResponseDTO> addComment(
             @PathVariable String id,
             @RequestBody String commentContent,
             Authentication authentication) {
+
         try {
             String authorExternalId = getExternalIdFromAuthentication(authentication);
+            
+            Optional<Ticket> ticketOpt = ticketService.findById(id);
+            if (ticketOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            
+            Ticket ticket = ticketOpt.get();
+            
+            if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+                if (!ticket.getCustomerExternalId().equals(authorExternalId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+            }
+            
             Ticket updatedTicket = ticketService.addComment(id, commentContent, authorExternalId);
             TicketResponseDTO response = ticketMapper.toDTO(updatedTicket);
             return ResponseEntity.ok(response);
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
+    @PreAuthorize("@roles.hasAnyTicketUpdateStatusRole(authentication)")
     public ResponseEntity<TicketResponseDTO> updateStatus(
             @PathVariable String id,
             @RequestBody TicketStatus newStatus,
             Authentication authentication) {
+
         try {
+
             String performedBy = getExternalIdFromAuthentication(authentication);
             Ticket updatedTicket = ticketService.updateStatus(id, newStatus, performedBy);
             TicketResponseDTO response = ticketMapper.toDTO(updatedTicket);
             return ResponseEntity.ok(response);
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 
     private String getExternalIdFromAuthentication(Authentication authentication) {
+
         if (authentication.getPrincipal() instanceof Jwt jwt) {
             return jwt.getClaimAsString("sub");
         }

@@ -33,6 +33,17 @@ spring:
         jwt:
           issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
           jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/.well-known/jwks.json}
+    roles:
+      ticket:
+        create: CUSTOMER,AGENT,ADMIN
+        read: CUSTOMER,AGENT,ADMIN
+        read-all: AGENT,ADMIN
+        update-status: AGENT,ADMIN
+      customer:
+        read-own: CUSTOMER
+        update-own: CUSTOMER
+        search: AGENT,ADMIN
+        read: AGENT,ADMIN
 
 server:
   port: 8080

@@ -1,5 +1,6 @@
 package com.support.customer.service;
 
+import com.support.customer.service.interfaces.ICustomerService;
 import com.support.customer.model.Customer;
 import com.support.customer.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class CustomerService {
+public class CustomerService implements ICustomerService {
 
     private final CustomerRepository customerRepository;
 
