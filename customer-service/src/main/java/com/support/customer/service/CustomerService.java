@@ -3,6 +3,7 @@ package com.support.customer.service;
 import com.support.customer.service.interfaces.ICustomerService;
 import com.support.customer.model.Customer;
 import com.support.customer.repository.CustomerRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -40,6 +41,7 @@ public class CustomerService implements ICustomerService {
     }
 
     @Transactional
+    @CircuitBreaker(name = "mysqlService")
     @Retryable(
             maxAttempts = 3,
             backoff = @Backoff(delay = 100, multiplier = 2)
