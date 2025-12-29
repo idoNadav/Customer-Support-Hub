@@ -30,11 +30,22 @@ public class CustomerService implements ICustomerService {
     }
 
     @Transactional
+    public Customer createCustomer(String externalId, Customer customer) {
+        if (customerRepository.findByExternalId(externalId).isPresent()) {
+            throw new IllegalArgumentException("Customer with externalId already exists: " + externalId);
+        }
+        customer.setExternalId(externalId);
+        customer.setOpenTicketCount(0);
+        return customerRepository.save(customer);
+    }
+
+    @Transactional
     @Retryable(
             maxAttempts = 3,
             backoff = @Backoff(delay = 100, multiplier = 2)
     )
     public void incrementOpenTicketCount(String externalId) {
+
         Customer customer = customerRepository.findByExternalId(externalId)
                 .orElseThrow(() -> new IllegalArgumentException("Customer not found: " + externalId));
         

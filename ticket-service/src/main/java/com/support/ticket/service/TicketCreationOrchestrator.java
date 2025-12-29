@@ -30,7 +30,8 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
 
         Optional<Ticket> existingTicket = ticketService.findByIdempotencyKey(idempotencyKey);
         if (existingTicket.isPresent()) {
-            log.info("Ticket already exists with idempotency key: {}", idempotencyKey);
+            log.info("Ticket already exists with idempotency key: {}, ticketId={}", 
+                idempotencyKey, existingTicket.get().getId());
             return existingTicket.get();
         }
 
@@ -53,7 +54,8 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
 
         try {
             syncTicketToCustomer(savedTicket, "Ticket count incremented in MySQL");
-            log.info("Ticket created successfully with idempotency key: {}", idempotencyKey);
+            log.info("Ticket created successfully: ticketId={}, customerId={}, idempotencyKey={}", 
+                savedTicket.getId(), customerExternalId, idempotencyKey);
         } catch (Exception e) {
             log.error("Failed to increment ticket count for customer: {}", customerExternalId, e);
             savedTicket.setSyncStatus(SyncStatus.FAILED);
@@ -74,7 +76,8 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
 
         try {
             syncTicketToCustomer(ticket, "Ticket count incremented in MySQL (recovered)");
-            log.info("Successfully recovered ticket: {}", ticket.getId());
+            log.info("Successfully recovered ticket: ticketId={}, customerId={}", 
+                ticket.getId(), customerExternalId);
         } catch (Exception e) {
             log.error("Failed to increment ticket count for customer: {} in ticket: {}", 
                     customerExternalId, ticket.getId(), e);
@@ -84,6 +87,7 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
     }
 
     private void syncTicketToCustomer(Ticket ticket, String eventDescription) {
+
         String customerExternalId = ticket.getCustomerExternalId();
         customerService.incrementOpenTicketCount(customerExternalId);
         ticket.setSyncStatus(SyncStatus.SYNCED);
@@ -93,8 +97,8 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
                 eventDescription,
                 customerExternalId
         );
+
         ticket.addEvent(syncedEvent);
-        
         ticketService.save(ticket);
     }
 }

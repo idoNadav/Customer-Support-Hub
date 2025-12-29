@@ -3,10 +3,15 @@ spring:
     name: customer-support-hub
   
   datasource:
-    url: jdbc:mysql://localhost:3306/support_hub?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/support_hub?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      minimum-idle: 5
+      initialization-fail-timeout: 60000
   
   jpa:
     hibernate:
@@ -33,23 +38,28 @@ spring:
         jwt:
           issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
           jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/.well-known/jwks.json}
-    roles:
-      ticket:
-        create: CUSTOMER,AGENT,ADMIN
-        read: CUSTOMER,AGENT,ADMIN
-        read-all: AGENT,ADMIN
-        update-status: AGENT,ADMIN
-      customer:
-        read-own: CUSTOMER
-        update-own: CUSTOMER
-        search: AGENT,ADMIN
-        read: AGENT,ADMIN
+
+security:
+  roles:
+    ticket:
+      create: CUSTOMER,AGENT,ADMIN
+      read: CUSTOMER,AGENT,ADMIN
+      read-all: AGENT,ADMIN
+      update-status: AGENT,ADMIN
+    customer:
+      read-own: CUSTOMER
+      update-own: CUSTOMER
+      search: AGENT,ADMIN
+      read: AGENT,ADMIN
 
 server:
   port: 8080
   error:
     include-message: always
     include-binding-errors: always
+
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-key-for-testing-purposes-only}
 
 logging:
   level:

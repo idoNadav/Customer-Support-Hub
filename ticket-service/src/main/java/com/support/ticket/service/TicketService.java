@@ -36,6 +36,7 @@ public class TicketService implements ITicketService {
     }
 
     public Ticket addComment(String ticketId, String commentContent, String authorExternalId) {
+
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
         
@@ -49,7 +50,6 @@ public class TicketService implements ITicketService {
         );
 
         ticket.addEvent(commentEvent);
-        
         return ticketRepository.save(ticket);
     }
 
@@ -121,6 +121,7 @@ public class TicketService implements ITicketService {
     }
 
     public List<Ticket> findTicketsByCustomer(String customerExternalId, TicketStatus status, Priority priority) {
+
         if (status != null && priority != null) {
             return ticketRepository.findByCustomerExternalIdAndStatusAndPriority(customerExternalId, status, priority);
         } else if (status != null) {
@@ -133,6 +134,7 @@ public class TicketService implements ITicketService {
     }
 
     private List<Ticket> filterByDateRange(List<Ticket> tickets, LocalDateTime fromDate, LocalDateTime toDate) {
+
         if (fromDate == null && toDate == null) {
             return tickets;
         }

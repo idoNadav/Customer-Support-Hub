@@ -8,10 +8,12 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -36,6 +38,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Map<String, Object>> handleAuthenticationException(
             AuthenticationException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Authentication failed");
         response.put("error", ex.getMessage());
@@ -58,12 +61,47 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<Map<String, Object>> handleConflictException(
             ConflictException ex) {
+        log.warn("Conflict detected: {}", ex.getMessage());
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Conflict");
         response.put("error", ex.getMessage());
         response.put("status", HttpStatus.CONFLICT.value());
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(com.support.customer.exception.ConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleCustomerConflictException(
+            com.support.customer.exception.ConflictException ex) {
+        log.warn("Conflict detected: {}", ex.getMessage());
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Conflict");
+        response.put("error", ex.getMessage());
+        response.put("status", HttpStatus.CONFLICT.value());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(com.support.customer.exception.ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleCustomerResourceNotFoundException(
+            com.support.customer.exception.ResourceNotFoundException ex) {
+        log.warn("Customer resource not found: {}", ex.getMessage());
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("status", HttpStatus.NOT_FOUND.value());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(com.support.ticket.exception.ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleTicketResourceNotFoundException(
+            com.support.ticket.exception.ResourceNotFoundException ex) {
+        log.warn("Ticket resource not found: {}", ex.getMessage());
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("status", HttpStatus.NOT_FOUND.value());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 }
 

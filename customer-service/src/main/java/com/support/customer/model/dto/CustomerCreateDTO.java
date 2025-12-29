@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CustomerRequestDTO {
+public class CustomerCreateDTO {
 
     @NotBlank(message = "Name is required")
     private String name;

@@ -22,6 +22,7 @@ public class TicketRecoveryService implements ITicketRecoveryService {
 
     @Scheduled(fixedDelay = 300000)
     public void recoverFailedTickets() {
+
         List<Ticket> failedTickets = ticketRepository.findBySyncStatus(SyncStatus.FAILED);
         log.info("Found {} failed tickets to retry recovery", failedTickets.size());
 

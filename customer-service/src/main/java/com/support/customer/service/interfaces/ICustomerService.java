@@ -11,6 +11,8 @@ public interface ICustomerService {
 
     boolean existsByExternalId(String externalId);
 
+    Customer createCustomer(String externalId, Customer customer);
+
     void incrementOpenTicketCount(String externalId);
 
     Customer updateCustomer(String externalId, Customer customerUpdate);

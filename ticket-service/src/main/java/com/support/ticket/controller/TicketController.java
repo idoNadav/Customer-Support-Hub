@@ -6,15 +6,18 @@ import com.support.ticket.model.dto.TicketResponseDTO;
 import com.support.ticket.model.Ticket;
 import com.support.ticket.model.enums.TicketStatus;
 import com.support.ticket.model.enums.Priority;
-import com.support.ticket.service.TicketCreationOrchestrator;
-import com.support.ticket.service.TicketService;
+import com.support.ticket.service.interfaces.ITicketCreationOrchestrator;
+import com.support.ticket.service.interfaces.ITicketService;
+import com.support.ticket.exception.ResourceNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,13 +26,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/tickets")
 @RequiredArgsConstructor
 public class TicketController {
 
-    private final TicketCreationOrchestrator ticketCreationOrchestrator;
-    private final TicketService ticketService;
+    private final ITicketCreationOrchestrator ticketCreationOrchestrator;
+    private final ITicketService ticketService;
     private final TicketMapper ticketMapper;
 
     @PostMapping
@@ -40,10 +44,17 @@ public class TicketController {
             Authentication authentication) {
 
         try {
+            if (authentication == null) {
+                authentication = SecurityContextHolder.getContext().getAuthentication();
+            }
             String externalId = getExternalIdFromAuthentication(authentication);
+            log.info("Creating ticket for customer: {}", externalId);
             
-            if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+            if (authentication != null && authentication.getAuthorities() != null && 
+                authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
                 if (!ticketRequest.getCustomerExternalId().equals(externalId)) {
+                    log.warn("Customer {} attempted to create ticket for different customer: {}", 
+                        externalId, ticketRequest.getCustomerExternalId());
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
                 }
             }
@@ -51,6 +62,10 @@ public class TicketController {
             Ticket ticket = ticketMapper.toEntity(ticketRequest);
             Ticket createdTicket = ticketCreationOrchestrator.createTicket(ticket, idempotencyKey);
             TicketResponseDTO response = ticketMapper.toDTO(createdTicket);
+
+            log.info("Ticket created successfully: ticketId={}, customerId={}", 
+                createdTicket.getId(), externalId);
+
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
             
         } catch (IllegalArgumentException e) {
@@ -101,17 +116,17 @@ public class TicketController {
             @PathVariable String id,
             Authentication authentication) {
 
-        Optional<Ticket> ticketOpt = ticketService.findById(id);
-        if (ticketOpt.isEmpty()) {
-            return ResponseEntity.<TicketResponseDTO>status(HttpStatus.NOT_FOUND).build();
-        }
+        Ticket ticket = ticketService.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
 
-        Ticket ticket = ticketOpt.get();
+        if (authentication == null) {
+            authentication = SecurityContextHolder.getContext().getAuthentication();
+        }
         String externalId = getExternalIdFromAuthentication(authentication);
 
         if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
             if (!ticket.getCustomerExternalId().equals(externalId)) {
-                return ResponseEntity.<TicketResponseDTO>status(HttpStatus.FORBIDDEN).build();
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
         }
 
@@ -127,16 +142,16 @@ public class TicketController {
             Authentication authentication) {
 
         try {
+            if (authentication == null) {
+                authentication = SecurityContextHolder.getContext().getAuthentication();
+            }
             String authorExternalId = getExternalIdFromAuthentication(authentication);
             
-            Optional<Ticket> ticketOpt = ticketService.findById(id);
-            if (ticketOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
+            Ticket ticket = ticketService.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
             
-            Ticket ticket = ticketOpt.get();
-            
-            if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+            if (authentication != null && authentication.getAuthorities() != null && 
+                authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
                 if (!ticket.getCustomerExternalId().equals(authorExternalId)) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
                 }
@@ -144,6 +159,7 @@ public class TicketController {
             
             Ticket updatedTicket = ticketService.addComment(id, commentContent, authorExternalId);
             TicketResponseDTO response = ticketMapper.toDTO(updatedTicket);
+            log.info("Comment added to ticket: ticketId={}, authorId={}", id, authorExternalId);
             return ResponseEntity.ok(response);
 
         } catch (IllegalArgumentException e) {
@@ -160,9 +176,17 @@ public class TicketController {
 
         try {
 
+            if (authentication == null) {
+                authentication = SecurityContextHolder.getContext().getAuthentication();
+            }
             String performedBy = getExternalIdFromAuthentication(authentication);
+
+            log.info("Updating ticket status: ticketId={}, newStatus={}, performedBy={}", 
+                id, newStatus, performedBy);
+
             Ticket updatedTicket = ticketService.updateStatus(id, newStatus, performedBy);
             TicketResponseDTO response = ticketMapper.toDTO(updatedTicket);
+            
             return ResponseEntity.ok(response);
 
         } catch (IllegalArgumentException e) {
