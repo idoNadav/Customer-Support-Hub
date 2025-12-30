@@ -190,13 +190,6 @@ The application uses **OAuth2 JWT-based authentication**:
 
 **Getting JWT Tokens:**
 
-> **Important Workflow:** 
-> 1. **First**: Login as **ADMIN** or **AGENT** to create customers
-> 2. **Then**: Create a customer using `POST /api/customers` with ADMIN/AGENT token (externalId is auto-generated in format `customer{number}`)
-> 3. **Finally**: Login as **CUSTOMER** using the auto-generated `externalId` from the created customer
-> 
-> The login endpoint validates that the customer exists in the database for CUSTOMER role. AGENT and ADMIN roles do not require pre-registration.
-
 **Option 1: Login Endpoint (Recommended)**
 Use the `/api/auth/login` endpoint to generate tokens automatically:
 
@@ -265,6 +258,17 @@ In a **production system**, this should be replaced with:
 ## API Testing
 
 ### Prerequisites
+
+> **Recommended:** Use the `/api/auth/login` endpoint to generate tokens automatically. This is the recommended approach for testing and development.
+
+> **Tip:** A Postman collection is available to simplify testing. Import the collection to quickly test all endpoints with pre-configured requests.
+
+> **Important Workflow:** 
+> 1. **First**: Login as **ADMIN** or **AGENT** to create customers
+> 2. **Then**: Create a customer using `POST /api/customers` with ADMIN/AGENT token (externalId is auto-generated in format `customer{number}`)
+> 3. **Finally**: Login as **CUSTOMER** using the auto-generated `externalId` from the created customer
+> 
+> The login endpoint validates that the customer exists in the database for CUSTOMER role. AGENT and ADMIN roles do not require pre-registration.
 
 **Step 1: Login as ADMIN/AGENT to Create Customers**
 ```bash
