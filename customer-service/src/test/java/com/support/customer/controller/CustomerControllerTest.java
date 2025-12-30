@@ -125,7 +125,6 @@ class CustomerControllerTest {
         createDTO = CustomerCreateDTO.builder()
                 .name("Dani Cohen")
                 .email("dani.cohen@example.com")
-                .externalId("customer123")
                 .build();
 
         responseDTO = CustomerResponseDTO.builder()
@@ -156,7 +155,7 @@ class CustomerControllerTest {
 
     @Test
     void createCustomer_Success_Returns201() throws Exception {
-        when(customerService.existsByExternalId("customer123")).thenReturn(false);
+        when(customerService.existsByExternalId(anyString())).thenReturn(false);
         when(customerMapper.toEntity(any(CustomerCreateDTO.class))).thenReturn(customer);
         when(customerService.createCustomer(anyString(), any(Customer.class))).thenReturn(customer);
         when(customerMapper.toDTO(any(Customer.class))).thenReturn(responseDTO);
@@ -176,9 +175,11 @@ class CustomerControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createDTO)))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.externalId").value("customer123"));
+                    .andExpect(jsonPath("$.externalId").exists())
+                    .andExpect(jsonPath("$.externalId").isNotEmpty());
 
-            verify(customerService).createCustomer("customer123", customer);
+            verify(customerService, atLeastOnce()).existsByExternalId(anyString());
+            verify(customerService).createCustomer(anyString(), any(Customer.class));
         } finally {
             AUTHENTICATION_HOLDER.remove();
             SecurityContextHolder.clearContext();
@@ -186,8 +187,14 @@ class CustomerControllerTest {
     }
 
     @Test
-    void createCustomer_DuplicateExternalId_Returns409() throws Exception {
-        when(customerService.existsByExternalId("customer123")).thenReturn(true);
+    void createCustomer_DuplicateExternalId_RetriesUntilUnique() throws Exception {
+        when(customerService.existsByExternalId(anyString()))
+                .thenReturn(true)
+                .thenReturn(true)
+                .thenReturn(false);
+        when(customerMapper.toEntity(any(CustomerCreateDTO.class))).thenReturn(customer);
+        when(customerService.createCustomer(anyString(), any(Customer.class))).thenReturn(customer);
+        when(customerMapper.toDTO(any(Customer.class))).thenReturn(responseDTO);
 
         Authentication auth = createMockAdminAuthentication("admin-456");
         
@@ -196,9 +203,10 @@ class CustomerControllerTest {
             mockMvc.perform(post("/api/customers")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(createDTO)))
-                    .andExpect(status().isConflict());
+                    .andExpect(status().isCreated());
 
-            verify(customerService, never()).createCustomer(anyString(), any(Customer.class));
+            verify(customerService, atLeast(2)).existsByExternalId(anyString());
+            verify(customerService).createCustomer(anyString(), any(Customer.class));
         } finally {
             AUTHENTICATION_HOLDER.remove();
             SecurityContextHolder.clearContext();
