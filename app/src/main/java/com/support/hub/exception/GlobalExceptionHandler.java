@@ -103,5 +103,43 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
+
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodArgumentTypeMismatch(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex) {
+        
+        String parameterName = ex.getName();
+        Object providedValue = ex.getValue();
+        Class<?> requiredType = ex.getRequiredType();
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        if (requiredType != null && requiredType.isEnum()) {
+            Object[] enumConstants = requiredType.getEnumConstants();
+            String[] validValues = new String[enumConstants.length];
+            for (int i = 0; i < enumConstants.length; i++) {
+                validValues[i] = enumConstants[i].toString();
+            }
+            
+            response.put("message", "Invalid value for parameter '" + parameterName + "'");
+            response.put("error", "Invalid enum value: '" + providedValue + "'");
+            response.put("parameter", parameterName);
+            response.put("providedValue", providedValue);
+            response.put("validValues", validValues);
+            response.put("status", HttpStatus.BAD_REQUEST.value());
+            
+            log.warn("Invalid enum value for parameter '{}': '{}'. Valid values: {}", 
+                    parameterName, providedValue, String.join(", ", validValues));
+        } else {
+            response.put("message", "Invalid value for parameter '" + parameterName + "'");
+            response.put("error", "Cannot convert '" + providedValue + "' to " + 
+                    (requiredType != null ? requiredType.getSimpleName() : "required type"));
+            response.put("parameter", parameterName);
+            response.put("providedValue", providedValue);
+            response.put("status", HttpStatus.BAD_REQUEST.value());
+        }
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
 }
 
