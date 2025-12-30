@@ -192,8 +192,8 @@ The application uses **OAuth2 JWT-based authentication**:
 
 > **Important Workflow:** 
 > 1. **First**: Login as **ADMIN** or **AGENT** to create customers
-> 2. **Then**: Create a customer using `POST /api/customers` with ADMIN/AGENT token
-> 3. **Finally**: Login as **CUSTOMER** using the `externalId` from the created customer
+> 2. **Then**: Create a customer using `POST /api/customers` with ADMIN/AGENT token (externalId is auto-generated in format `customer{number}`)
+> 3. **Finally**: Login as **CUSTOMER** using the auto-generated `externalId` from the created customer
 > 
 > The login endpoint validates that the customer exists in the database for CUSTOMER role. AGENT and ADMIN roles do not require pre-registration.
 
@@ -201,10 +201,11 @@ The application uses **OAuth2 JWT-based authentication**:
 Use the `/api/auth/login` endpoint to generate tokens automatically:
 
 ```bash
+# Note: For CUSTOMER role, use the auto-generated externalId from the created customer
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "sub": "customer123",
+    "sub": "customer123456",
     "role": "CUSTOMER"
   }'
 ```
@@ -230,7 +231,7 @@ Create tokens manually using [jwt.io](https://jwt.io):
 **CUSTOMER Token:**
 ```json
 {
-  "sub": "customer123",
+  "sub": "customer123456",
   "roles": ["CUSTOMER"]
 }
 ```
@@ -277,7 +278,7 @@ export ADMIN_TOKEN=$ADMIN_TOKEN
 
 **Step 2: Create a Customer**
 ```bash
-# Create customer (externalId is optional - will be auto-generated if not provided)
+# Create customer (externalId is auto-generated in format "customer{number}")
 curl -X POST http://localhost:8080/api/customers \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
@@ -286,9 +287,9 @@ curl -X POST http://localhost:8080/api/customers \
     "email": "john.doe@example.com"
   }'
 
-# Response includes the externalId (use it for customer login)
+# Response includes the auto-generated externalId (use it for customer login)
 # {
-#   "externalId": "customer123",
+#   "externalId": "customer123456",
 #   ...
 # }
 ```
@@ -296,10 +297,10 @@ curl -X POST http://localhost:8080/api/customers \
 **Step 3: Login as CUSTOMER**
 
 ```bash
-# Login as CUSTOMER using the externalId from Step 2
+# Login as CUSTOMER using the externalId from Step 2 ("customer123456")
 CUSTOMER_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"sub": "customer123", "role": "CUSTOMER"}' | jq -r '.token')
+  -d '{"sub": "customer123456", "role": "CUSTOMER"}' | jq -r '.token')
 
 export JWT_TOKEN=$CUSTOMER_TOKEN
 ```
@@ -314,15 +315,6 @@ Then set token variable:
 ```bash
 export JWT_TOKEN="<your-generated-jwt-token>"
 ```
-
-**Option 3: Postman Collection Variable**
-1. Create login request: `POST /api/auth/login`
-2. In "Tests" tab, add:
-   ```javascript
-   var jsonData = pm.response.json();
-   pm.collectionVariables.set("jwt_token", jsonData.token);
-   ```
-3. Use `{{jwt_token}}` in Authorization header of other requests
 
 ### Authentication Endpoints
 
@@ -340,11 +332,11 @@ curl -X POST http://localhost:8080/api/auth/login \
   }'
 
 # Step 2: After creating a customer, login as CUSTOMER
-# Use the externalId from the created customer
+# Use the auto-generated externalId from the created customer ("customer123456")
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "sub": "customer123",  // Must match the externalId from created customer
+    "sub": "customer123456",  // Must match the auto-generated externalId from created customer
     "role": "CUSTOMER"
   }'
 
@@ -360,26 +352,15 @@ curl -X POST http://localhost:8080/api/auth/login \
 ### Customer Endpoints
 
 #### 1. Create Customer (ADMIN/AGENT only)
-> **Note:** Only ADMIN and AGENT roles can create customers. CUSTOMER role cannot create accounts.
+> **Note:** Only ADMIN and AGENT roles can create customers. CUSTOMER role cannot create accounts. The `externalId` is automatically generated in the format `customer{number}` (e.g., `customer123456`).
 
 ```bash
-# With explicit externalId
 curl -X POST http://localhost:8080/api/customers \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "John Doe",
-    "email": "john.doe@example.com",
-    "externalId": "customer123"
-  }'
-
-# Without externalId (auto-generated UUID)
-curl -X POST http://localhost:8080/api/customers \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Jane Doe",
-    "email": "jane.doe@example.com"
+    "email": "john.doe@example.com"
   }'
 ```
 
@@ -387,7 +368,7 @@ curl -X POST http://localhost:8080/api/customers \
 ```json
 {
   "id": 1,
-  "externalId": "customer123",  // Use this for CUSTOMER login
+  "externalId": "customer123456",  // Auto-generated, use this for CUSTOMER login
   "name": "John Doe",
   "email": "john.doe@example.com",
   "openTicketCount": 0

@@ -46,27 +46,12 @@ public class CustomerController {
         }
 
         String jwtSub = getExternalIdFromAuthentication(authentication);
+        
         String externalId;
-
-        if (customerCreateDTO.getExternalId() != null && !customerCreateDTO.getExternalId().isBlank()) {
-            externalId = customerCreateDTO.getExternalId();
-
-            if (externalId.equals(jwtSub)) {
-                throw new IllegalArgumentException("ADMIN/AGENT cannot create themselves as CUSTOMER");
-            }
-
-            String lowerExternalId = externalId.toLowerCase();
-            if (lowerExternalId.startsWith("admin-") || lowerExternalId.startsWith("agent-")) {
-                throw new IllegalArgumentException("ADMIN/AGENT cannot create customers with externalId starting with 'admin-' or 'agent-'");
-            }
-        } else {
+        do {
             long randomNum = Math.abs(new Random().nextLong() % 1000000);
             externalId = "customer" + randomNum;
-        }
-
-        if (customerService.existsByExternalId(externalId)) {
-            throw new ConflictException("Customer with externalId already exists: " + externalId);
-        }
+        } while (customerService.existsByExternalId(externalId));
 
         Customer customer = customerMapper.toEntity(customerCreateDTO);
         Customer createdCustomer = customerService.createCustomer(externalId, customer);
