@@ -28,7 +28,7 @@ This application uses a **multi-module Maven monolith** structure instead of mic
   - Ticket creation saga orchestration
   - Ticket recovery service
 
-This structure provides **modularity** (clear separation of concerns) while maintaining **operational simplicity** (single deployment unit).
+This structure provides **modularity** (clear separation of concerns and domain logic) while maintaining **operational simplicity** (single deployment unit). Each module encapsulates its own domain logic, entities, and business rules, making the codebase easier to understand, test, and maintain.
 
 ## Deliberate Design Challenge: Cross-Database Consistency
 
@@ -252,7 +252,6 @@ In a **production system**, this should be replaced with:
 - User credential validation against a database
 - Proper OAuth2 authorization server (Keycloak, Auth0,..)
 - Password hashing and security best practices
-
 
 ---
 
