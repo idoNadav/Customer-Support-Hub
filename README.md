@@ -15,9 +15,18 @@ This application uses a **multi-module Maven monolith** structure instead of mic
 5. **Development Speed**: Faster iteration without inter-service communication overhead
 
 **Structure:**
-- app - Main Spring Boot application (orchestrates modules)
-- customer-service - Customer domain (MySQL)
-- ticket-service - Ticket domain (MongoDB)
+- `app/` - Main Spring Boot application (orchestrates modules)
+  - Security configuration (JWT, OAuth2)
+  - Authentication endpoint (`/api/auth/login`)
+  - Global exception handling
+  - Integration tests
+- `customer-service/` - Customer domain (MySQL)
+  - Customer CRUD operations
+  - Customer search and profile management
+- `ticket-service/` - Ticket domain (MongoDB)
+  - Ticket CRUD operations
+  - Ticket creation saga orchestration
+  - Ticket recovery service
 
 This structure provides **modularity** (clear separation of concerns) while maintaining **operational simplicity** (single deployment unit).
 
@@ -150,10 +159,11 @@ mvn spring-boot:run
 
 ### API Endpoints
 
+- **Authentication**: `/api/auth/login` (public - generates JWT tokens)
 - **Tickets**: `/api/tickets`
 - **Customers**: `/api/customers`
 
-All endpoints require JWT authentication.
+All endpoints except `/api/auth/login` require JWT authentication.
 
 
 ### Authentication & Authorization
@@ -179,33 +189,69 @@ The application uses **OAuth2 JWT-based authentication**:
   - Can update ticket statuses
 - **Enforcement**: JWT `sub` claim (mapped to `customer.externalId`) is used to verify ownership
 
-**JWT Token Examples:**
-Create tokens using [jwt.io](https://jwt.io) or any JWT library:
+**Getting JWT Tokens:**
+
+**Option 1: Login Endpoint (Recommended for Testing)**
+Use the `/api/auth/login` endpoint to generate tokens automatically:
+
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sub": "customer123",
+    "role": "CUSTOMER"
+  }'
+```
+
+Response:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600
+}
+```
+
+**Option 2: Manual Token Creation (jwt.io)**
+Create tokens manually using [jwt.io](https://jwt.io):
 
 - **Algorithm**: `HS256` (HmacSHA256)
 - **Secret**: `your-256-bit-secret-key-for-testing-purposes-only`
   - This is the default secret configured in `application.yml` under `jwt.secret`
   - Can be overridden via `JWT_SECRET` environment variable
-  - **Use this exact secret** when signing tokens for testing
 - **Payload examples:**
 
 **CUSTOMER Token:**
+```json
 {
   "sub": "customer123",
   "roles": ["CUSTOMER"]
 }
+```
 
 **AGENT Token:**
+```json
 {
   "sub": "agent456",
   "roles": ["AGENT"]
 }
+```
 
 **ADMIN Token:**
+```json
 {
   "sub": "admin789",
   "roles": ["ADMIN"]
 }
+```
+
+**Note on Login Endpoint:**
+The current `/api/auth/login` endpoint is **simplified for testing purposes**. It accepts `sub` and `role` directly without password validation. 
+In a **production system**, this should be replaced with:
+- Username/password authentication
+- User credential validation against a database
+- Proper OAuth2 authorization server (Keycloak, Auth0,..)
+- Password hashing and security best practices
 
 
 ---
@@ -214,15 +260,66 @@ Create tokens using [jwt.io](https://jwt.io) or any JWT library:
 
 ### Prerequisites
 
-1. **Generate JWT Token**: Use [jwt.io](https://jwt.io) with:
-   - Algorithm: `HS256`
-   - Secret: `your-256-bit-secret-key-for-testing-purposes-only`
-   - Payload: See examples in Authentication & Authorization section
+**Get JWT Token:**
 
-2. **Set Token Variable** (for easier testing):
-   ```bash
-   export JWT_TOKEN="<your-generated-jwt-token>"
+**Option 1: Use Login Endpoint (Easiest)**
+```bash
+# Login and save token
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"sub": "customer123", "role": "CUSTOMER"}' | jq -r '.token')
+
+export JWT_TOKEN=$TOKEN
+```
+
+**Option 2: Manual Token Creation**
+Use [jwt.io](https://jwt.io) with:
+- Algorithm: `HS256`
+- Secret: `your-256-bit-secret-key-for-testing-purposes-only`
+- Payload: See examples in Authentication & Authorization section
+
+Then set token variable:
+```bash
+export JWT_TOKEN="<your-generated-jwt-token>"
+```
+
+**Option 3: Postman Collection Variable**
+1. Create login request: `POST /api/auth/login`
+2. In "Tests" tab, add:
+   ```javascript
+   var jsonData = pm.response.json();
+   pm.collectionVariables.set("jwt_token", jsonData.token);
    ```
+3. Use `{{jwt_token}}` in Authorization header of other requests
+
+### Authentication Endpoints
+
+#### Login (Get JWT Token)
+```bash
+# CUSTOMER role
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sub": "customer123",
+    "role": "CUSTOMER"
+  }'
+
+# AGENT role
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sub": "agent456",
+    "role": "AGENT"
+  }'
+
+# ADMIN role
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sub": "admin789",
+    "role": "ADMIN"
+  }'
+```
 
 ### Customer Endpoints
 
