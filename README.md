@@ -197,7 +197,7 @@ The application uses **OAuth2 JWT-based authentication**:
 > 
 > The login endpoint validates that the customer exists in the database for CUSTOMER role. AGENT and ADMIN roles do not require pre-registration.
 
-**Option 1: Login Endpoint (Recommended for Testing)**
+**Option 1: Login Endpoint (Recommended)**
 Use the `/api/auth/login` endpoint to generate tokens automatically:
 
 ```bash
@@ -268,12 +268,13 @@ In a **production system**, this should be replaced with:
 
 **Step 1: Login as ADMIN/AGENT to Create Customers**
 ```bash
-# Login as ADMIN
-ADMIN_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"sub": "admin-456", "role": "ADMIN"}' | jq -r '.token')
-
-export ADMIN_TOKEN=$ADMIN_TOKEN
+# Login as ADMIN OR AGENT
+curl --location --request POST 'http://localhost:8080/api/auth/login' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "sub": "admin-2123",
+  "role": "ADMIN"
+}'
 ```
 
 **Step 2: Create a Customer**
@@ -283,8 +284,8 @@ curl -X POST http://localhost:8080/api/customers \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "John Doe",
-    "email": "john.doe@example.com"
+    "name": "Ido Cohen",
+    "email": "Ido.Cohen@gmail.com"
   }'
 
 # Response includes the auto-generated externalId (use it for customer login)
@@ -305,7 +306,9 @@ CUSTOMER_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
 export JWT_TOKEN=$CUSTOMER_TOKEN
 ```
 
-**Option 2: Manual Token Creation**
+**Option 2: Manual Token Creation (Alternative)**
+> **Note:** This method is available but not recommended. Use Option 1 (Login Endpoint) instead.
+
 Use [jwt.io](https://jwt.io) with:
 - Algorithm: `HS256`
 - Secret: `your-256-bit-secret-key-for-testing-purposes-only`
