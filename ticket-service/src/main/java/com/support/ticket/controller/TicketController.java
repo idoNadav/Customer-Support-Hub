@@ -6,41 +6,68 @@ import com.support.ticket.model.dto.TicketResponseDTO;
 import com.support.ticket.model.Ticket;
 import com.support.ticket.model.enums.TicketStatus;
 import com.support.ticket.model.enums.Priority;
-import com.support.ticket.service.TicketCreationOrchestrator;
-import com.support.ticket.service.TicketService;
+import com.support.ticket.service.interfaces.ITicketCreationOrchestrator;
+import com.support.ticket.service.interfaces.ITicketService;
+import com.support.ticket.exception.ResourceNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/tickets")
 @RequiredArgsConstructor
 public class TicketController {
 
-    private final TicketCreationOrchestrator ticketCreationOrchestrator;
-    private final TicketService ticketService;
+    private final ITicketCreationOrchestrator ticketCreationOrchestrator;
+    private final ITicketService ticketService;
     private final TicketMapper ticketMapper;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'AGENT', 'ADMIN')")
+    @PreAuthorize("@roles.hasAnyTicketCreateRole(authentication)")
     public ResponseEntity<TicketResponseDTO> createTicket(
             @Valid @RequestBody TicketRequestDTO ticketRequest,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            Authentication authentication) {
+
         try {
+            if (authentication == null) {
+                authentication = SecurityContextHolder.getContext().getAuthentication();
+            }
+            String externalId = getExternalIdFromAuthentication(authentication);
+            log.info("Creating ticket for customer: {}", externalId);
+            
+            if (authentication != null && authentication.getAuthorities() != null && 
+                authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+                if (!ticketRequest.getCustomerExternalId().equals(externalId)) {
+                    log.warn("Customer {} attempted to create ticket for different customer: {}", 
+                        externalId, ticketRequest.getCustomerExternalId());
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+            }
+            
             Ticket ticket = ticketMapper.toEntity(ticketRequest);
             Ticket createdTicket = ticketCreationOrchestrator.createTicket(ticket, idempotencyKey);
             TicketResponseDTO response = ticketMapper.toDTO(createdTicket);
+
+            log.info("Ticket created successfully: ticketId={}, customerId={}", 
+                createdTicket.getId(), externalId);
+
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (RuntimeException e) {
@@ -49,86 +76,126 @@ public class TicketController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
+    @PreAuthorize("@roles.hasAnyTicketReadAllRole(authentication)")
     public ResponseEntity<List<TicketResponseDTO>> getTickets(
             @RequestParam(required = false) TicketStatus status,
             @RequestParam(required = false) Priority priority,
             @RequestParam(required = false) String customerExternalId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+
         List<Ticket> tickets = ticketService.findTickets(status, priority, customerExternalId, fromDate, toDate);
         List<TicketResponseDTO> response = tickets.stream()
                 .map(ticketMapper::toDTO)
                 .collect(Collectors.toList());
+                
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("@roles.hasCustomerReadOwnRole(authentication)")
     public ResponseEntity<List<TicketResponseDTO>> getOwnTickets(
             Authentication authentication,
             @RequestParam(required = false) TicketStatus status,
             @RequestParam(required = false) Priority priority) {
+
         String customerExternalId = getExternalIdFromAuthentication(authentication);
+
         List<Ticket> tickets = ticketService.findTicketsByCustomer(customerExternalId, status, priority);
+
         List<TicketResponseDTO> response = tickets.stream()
                 .map(ticketMapper::toDTO)
                 .collect(Collectors.toList());
+
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'AGENT', 'ADMIN')")
+    @PreAuthorize("@roles.hasAnyTicketReadRole(authentication)")
     public ResponseEntity<TicketResponseDTO> getTicketById(
             @PathVariable String id,
             Authentication authentication) {
-        return ticketService.findById(id)
-                .map(ticket -> {
-                    String externalId = getExternalIdFromAuthentication(authentication);
-                    if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
-                        if (!ticket.getCustomerExternalId().equals(externalId)) {
-                            return ResponseEntity.<TicketResponseDTO>status(HttpStatus.FORBIDDEN).build();
-                        }
-                    }
-                    TicketResponseDTO response = ticketMapper.toDTO(ticket);
-                    return ResponseEntity.ok(response);
-                })
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+
+        Ticket ticket = ticketService.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
+
+        if (authentication == null) {
+            authentication = SecurityContextHolder.getContext().getAuthentication();
+        }
+        String externalId = getExternalIdFromAuthentication(authentication);
+
+        if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+            if (!ticket.getCustomerExternalId().equals(externalId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+
+        TicketResponseDTO response = ticketMapper.toDTO(ticket);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/comments")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'AGENT', 'ADMIN')")
+    @PreAuthorize("@roles.hasAnyTicketReadRole(authentication)")
     public ResponseEntity<TicketResponseDTO> addComment(
             @PathVariable String id,
             @RequestBody String commentContent,
             Authentication authentication) {
+
         try {
+            if (authentication == null) {
+                authentication = SecurityContextHolder.getContext().getAuthentication();
+            }
             String authorExternalId = getExternalIdFromAuthentication(authentication);
+            
+            Ticket ticket = ticketService.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Ticket not found"));
+            
+            if (authentication != null && authentication.getAuthorities() != null && 
+                authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+                if (!ticket.getCustomerExternalId().equals(authorExternalId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+            }
+            
             Ticket updatedTicket = ticketService.addComment(id, commentContent, authorExternalId);
             TicketResponseDTO response = ticketMapper.toDTO(updatedTicket);
+            log.info("Comment added to ticket: ticketId={}, authorId={}", id, authorExternalId);
             return ResponseEntity.ok(response);
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
+    @PreAuthorize("@roles.hasAnyTicketUpdateStatusRole(authentication)")
     public ResponseEntity<TicketResponseDTO> updateStatus(
             @PathVariable String id,
             @RequestBody TicketStatus newStatus,
             Authentication authentication) {
+
         try {
+
+            if (authentication == null) {
+                authentication = SecurityContextHolder.getContext().getAuthentication();
+            }
             String performedBy = getExternalIdFromAuthentication(authentication);
+
+            log.info("Updating ticket status: ticketId={}, newStatus={}, performedBy={}", 
+                id, newStatus, performedBy);
+
             Ticket updatedTicket = ticketService.updateStatus(id, newStatus, performedBy);
             TicketResponseDTO response = ticketMapper.toDTO(updatedTicket);
+            
             return ResponseEntity.ok(response);
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 
     private String getExternalIdFromAuthentication(Authentication authentication) {
+
         if (authentication.getPrincipal() instanceof Jwt jwt) {
             return jwt.getClaimAsString("sub");
         }

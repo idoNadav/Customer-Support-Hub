@@ -1,5 +1,7 @@
 package com.support.ticket.service;
 
+import com.support.ticket.service.interfaces.ITicketCreationOrchestrator;
+import com.support.ticket.service.interfaces.ITicketRecoveryService;
 import com.support.ticket.model.Ticket;
 import com.support.ticket.model.enums.SyncStatus;
 import com.support.ticket.repository.TicketRepository;
@@ -13,13 +15,14 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class TicketRecoveryService {
+public class TicketRecoveryService implements ITicketRecoveryService {
 
     private final TicketRepository ticketRepository;
-    private final TicketCreationOrchestrator ticketCreationOrchestrator;
+    private final ITicketCreationOrchestrator ticketCreationOrchestrator;
 
     @Scheduled(fixedDelay = 300000)
     public void recoverFailedTickets() {
+
         List<Ticket> failedTickets = ticketRepository.findBySyncStatus(SyncStatus.FAILED);
         log.info("Found {} failed tickets to retry recovery", failedTickets.size());
 

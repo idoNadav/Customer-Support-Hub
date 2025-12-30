@@ -13,9 +13,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class CustomerRequestDTO {
 
-    @NotBlank(message = "External ID is required")
-    private String externalId;
-
     @NotBlank(message = "Name is required")
     private String name;
 

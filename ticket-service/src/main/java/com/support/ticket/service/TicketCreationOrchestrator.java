@@ -1,6 +1,9 @@
 package com.support.ticket.service;
 
-import com.support.customer.service.CustomerService;
+import com.support.customer.service.interfaces.ICustomerService;
+import com.support.ticket.constants.TicketEventDescriptions;
+import com.support.ticket.service.interfaces.ITicketCreationOrchestrator;
+import com.support.ticket.service.interfaces.ITicketService;
 import com.support.ticket.model.Ticket;
 import com.support.ticket.model.TicketEvent;
 import com.support.ticket.model.enums.SyncStatus;
@@ -15,19 +18,21 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class TicketCreationOrchestrator {
+public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
 
-    private final TicketService ticketService;
-    private final CustomerService customerService;
+    private final ITicketService ticketService;
+    private final ICustomerService customerService;
 
     public Ticket createTicket(Ticket ticket, String idempotencyKey) {
+        
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             idempotencyKey = UUID.randomUUID().toString();
         }
 
         Optional<Ticket> existingTicket = ticketService.findByIdempotencyKey(idempotencyKey);
         if (existingTicket.isPresent()) {
-            log.info("Ticket already exists with idempotency key: {}", idempotencyKey);
+            log.info("Ticket already exists with idempotency key: {}, ticketId={}", 
+                idempotencyKey, existingTicket.get().getId());
             return existingTicket.get();
         }
 
@@ -41,7 +46,7 @@ public class TicketCreationOrchestrator {
         
         TicketEvent createdEvent = new TicketEvent(
                 TicketEventType.CREATED,
-                "Ticket created",
+                TicketEventDescriptions.TICKET_CREATED,
                 customerExternalId
         );
         ticket.addEvent(createdEvent);
@@ -49,8 +54,9 @@ public class TicketCreationOrchestrator {
         Ticket savedTicket = ticketService.save(ticket);
 
         try {
-            syncTicketToCustomer(savedTicket, "Ticket count incremented in MySQL");
-            log.info("Ticket created successfully with idempotency key: {}", idempotencyKey);
+            syncTicketToCustomer(savedTicket, TicketEventDescriptions.TICKET_COUNT_INCREMENTED);
+            log.info("Ticket created successfully: ticketId={}, customerId={}, idempotencyKey={}", 
+                savedTicket.getId(), customerExternalId, idempotencyKey);
         } catch (Exception e) {
             log.error("Failed to increment ticket count for customer: {}", customerExternalId, e);
             savedTicket.setSyncStatus(SyncStatus.FAILED);
@@ -70,8 +76,9 @@ public class TicketCreationOrchestrator {
         }
 
         try {
-            syncTicketToCustomer(ticket, "Ticket count incremented in MySQL (recovered)");
-            log.info("Successfully recovered ticket: {}", ticket.getId());
+            syncTicketToCustomer(ticket, TicketEventDescriptions.TICKET_COUNT_INCREMENTED_RECOVERED);
+            log.info("Successfully recovered ticket: ticketId={}, customerId={}", 
+                ticket.getId(), customerExternalId);
         } catch (Exception e) {
             log.error("Failed to increment ticket count for customer: {} in ticket: {}", 
                     customerExternalId, ticket.getId(), e);
@@ -81,6 +88,7 @@ public class TicketCreationOrchestrator {
     }
 
     private void syncTicketToCustomer(Ticket ticket, String eventDescription) {
+
         String customerExternalId = ticket.getCustomerExternalId();
         customerService.incrementOpenTicketCount(customerExternalId);
         ticket.setSyncStatus(SyncStatus.SYNCED);
@@ -90,8 +98,8 @@ public class TicketCreationOrchestrator {
                 eventDescription,
                 customerExternalId
         );
+
         ticket.addEvent(syncedEvent);
-        
         ticketService.save(ticket);
     }
 }

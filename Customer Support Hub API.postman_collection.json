@@ -1,0 +1,1032 @@
+{
+	"info": {
+		"_postman_id": "3bffaf46-553a-4702-b475-797f300f5cf6",
+		"name": "Customer Support Hub API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Login",
+			"item": [
+				{
+					"name": "Login as Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"var token = jsonData.token;",
+									"",
+									"pm.collectionVariables.set(\"JWT_token\",\"Bearer \"+token);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"sub\": \"{{CustomerExternalId}}\",\n    \"role\": \"CUSTOMER\"\n  }"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login as ADMIN",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"var token = jsonData.token;",
+									"",
+									"pm.collectionVariables.set(\"JWT_token\",\"Bearer \"+token);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sub\": \"admin-2123\",\n  \"role\": \"ADMIN\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login as AGENT",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"var token = jsonData.token;",
+									"",
+									"pm.collectionVariables.set(\"JWT_token\",\"Bearer \"+token);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sub\": \"agent-456\",\n  \"role\": \"AGENT\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8080/api/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Create customer in DB (need to login as ADMIN/AGENT)",
+			"item": [
+				{
+					"name": "create customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"var externalId = jsonData.externalId;",
+									"",
+									"pm.collectionVariables.set(\"CustomerExternalId\",externalId);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Ido Cohen\",\n  \"email\": \"Ido.Cohen@gmail.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Customers",
+			"item": [
+				{
+					"name": "Get Own Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/customers/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers",
+								"me"
+							]
+						},
+						"description": "Get current customer's own profile (CUSTOMER role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Own Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Ido Cohen\",\n    \"email\": \"ido.Le@gmail.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/customers/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers",
+								"me"
+							]
+						},
+						"description": "Update current customer's own profile (CUSTOMER role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Search by name",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"type": "text",
+								"value": "{{JWT_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/customers?name=Ido",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers"
+							],
+							"query": [
+								{
+									"key": "externalId",
+									"value": "",
+									"description": "Search by external ID (optional)",
+									"disabled": true
+								},
+								{
+									"key": "name",
+									"value": "Ido"
+								}
+							]
+						},
+						"description": "Search customers (AGENT/ADMIN role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Search by email",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"type": "text",
+								"value": "{{JWT_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/customers?email=example.com",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers"
+							],
+							"query": [
+								{
+									"key": "externalId",
+									"value": "",
+									"description": "Search by external ID (optional)",
+									"disabled": true
+								},
+								{
+									"key": "email",
+									"value": "example.com"
+								}
+							]
+						},
+						"description": "Search customers (AGENT/ADMIN role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Search by externalId",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"type": "text",
+								"value": "{{JWT_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/customers?externalId=customer123",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers"
+							],
+							"query": [
+								{
+									"key": "externalId",
+									"value": "",
+									"description": "Search by external ID (optional)",
+									"disabled": true
+								},
+								{
+									"key": "externalId",
+									"value": "customer123"
+								}
+							]
+						},
+						"description": "Search customers (AGENT/ADMIN role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get all customer",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/customers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers"
+							],
+							"query": [
+								{
+									"key": "externalId",
+									"value": "",
+									"description": "Search by external ID (optional)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Search customers (AGENT/ADMIN role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Customer by External ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/customers/customer125",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"customers",
+								"customer125"
+							]
+						},
+						"description": "Get customer by external ID (AGENT/ADMIN role required)"
+					},
+					"response": []
+				}
+			],
+			"description": "Customer management endpoints"
+		},
+		{
+			"name": "Tickets",
+			"item": [
+				{
+					"name": "Create Ticket",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "test-ticket-12",
+								"description": "Optional idempotency key for duplicate prevention",
+								"disabled": true
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerExternalId\": \"{{CustomerExternalId}}\",\n    \"title\": \"Login Issue\",\n    \"description\": \"Cannot login to the system\",\n    \"status\": \"OPEN\",\n    \"priority\": \"LOW\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tickets",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets"
+							]
+						},
+						"description": "Create a new ticket (CUSTOMER/AGENT/ADMIN role required). Customer must exist in database."
+					},
+					"response": []
+				},
+				{
+					"name": "Add Comment to Ticket",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "\"This is a comment about the ticket\"",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tickets/69527e891e2de51328a3680c/comments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"69527e891e2de51328a3680c",
+								"comments"
+							]
+						},
+						"description": "Add a comment to a ticket (CUSTOMER/AGENT/ADMIN role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Ticket Status",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "\"IN_PROGRESS\"",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tickets/69527e891e2de51328a3680c/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"69527e891e2de51328a3680c",
+								"status"
+							]
+						},
+						"description": "Update ticket status (AGENT/ADMIN role required). Valid statuses: OPEN, IN_PROGRESS, RESOLVED, CLOSED"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Own Tickets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tickets/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"me"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "",
+									"description": "Filter by status (optional)",
+									"disabled": true
+								},
+								{
+									"key": "priority",
+									"value": "",
+									"description": "Filter by priority (optional)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get current customer's own tickets (CUSTOMER role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Own Tickets filter by status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"type": "text",
+								"value": "{{JWT_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tickets/me?priority=LOW",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"me"
+							],
+							"query": [
+								{
+									"key": "priority",
+									"value": "",
+									"description": "Filter by priority (optional)",
+									"disabled": true
+								},
+								{
+									"key": "priority",
+									"value": "LOW"
+								}
+							]
+						},
+						"description": "Get current customer's own tickets (CUSTOMER role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Own Tickets filter by priority",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"type": "text",
+								"value": "{{JWT_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tickets/me?status=OPEN",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"me"
+							],
+							"query": [
+								{
+									"key": "priority",
+									"value": "",
+									"description": "Filter by priority (optional)",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "OPEN"
+								}
+							]
+						},
+						"description": "Get current customer's own tickets (CUSTOMER role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Tickets",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tickets",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "OPEN",
+									"description": "Filter by status (optional)",
+									"disabled": true
+								},
+								{
+									"key": "priority",
+									"value": "HIGH",
+									"description": "Filter by priority (optional)",
+									"disabled": true
+								},
+								{
+									"key": "customerExternalId",
+									"value": "",
+									"description": "Filter by customer external ID (optional)",
+									"disabled": true
+								},
+								{
+									"key": "fromDate",
+									"value": "",
+									"description": "Filter from date (ISO format, optional)",
+									"disabled": true
+								},
+								{
+									"key": "toDate",
+									"value": "",
+									"description": "Filter to date (ISO format, optional)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get all tickets with optional filters (AGENT/ADMIN role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Ticket by ticketID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tickets/69527e891e2de51328a3680c",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"69527e891e2de51328a3680c"
+							]
+						},
+						"description": "Get ticket by ID (CUSTOMER/AGENT/ADMIN role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tickets Filter by status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "{{JWT_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tickets?status=OPEN",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "OPEN"
+								}
+							]
+						},
+						"description": "Get ticket by ID (CUSTOMER/AGENT/ADMIN role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tickets Filter by priority",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"type": "text",
+								"value": "{{JWT_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tickets?priority=HIGH",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets"
+							],
+							"query": [
+								{
+									"key": "priority",
+									"value": "HIGH"
+								}
+							]
+						},
+						"description": "Get ticket by ID (CUSTOMER/AGENT/ADMIN role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tickets Filter by date range",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"type": "text",
+								"value": "{{JWT_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tickets?fromDate=2025-12-01T00:00:00&toDate=2025-12-31T23:59:59",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets"
+							],
+							"query": [
+								{
+									"key": "fromDate",
+									"value": "2025-12-01T00:00:00"
+								},
+								{
+									"key": "toDate",
+									"value": "2025-12-31T23:59:59"
+								}
+							]
+						},
+						"description": "Get ticket by ID (CUSTOMER/AGENT/ADMIN role required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tickets by externalD",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"type": "text",
+								"value": "{{JWT_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/tickets?customerExternalId=customer123",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tickets"
+							],
+							"query": [
+								{
+									"key": "customerExternalId",
+									"value": "customer123"
+								}
+							]
+						},
+						"description": "Get ticket by ID (CUSTOMER/AGENT/ADMIN role required)"
+					},
+					"response": []
+				}
+			],
+			"description": "Ticket management endpoints"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080"
+		},
+		{
+			"key": "jwt_token",
+			"value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjdXN0b21lcjEyMyIsInJvbGVzIjpbIkNVU1RPTUVSIl0sImlhdCI6MTc2NzA4ODExOSwiZXhwIjoxNzY3MDkxNzE5fQ.lQ69glzAYdHFoWBVwcRUPKJbRyVWxk_KqcwYid-4Ekk"
+		},
+		{
+			"key": "JWT_token",
+			"value": ""
+		},
+		{
+			"key": "CustomerExternalId",
+			"value": ""
+		}
+	]
+}

@@ -1,0 +1,49 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: support-hub-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: support_hub
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - support-hub-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mysql:
+    image: mysql:8.0
+    container_name: support-hub-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: support_hub
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - support-hub-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    command: --default-authentication-plugin=mysql_native_password
+
+volumes:
+  mongodb_data:
+    driver: local
+  mysql_data:
+    driver: local
+
+networks:
+  support-hub-network:
+    driver: bridge
+

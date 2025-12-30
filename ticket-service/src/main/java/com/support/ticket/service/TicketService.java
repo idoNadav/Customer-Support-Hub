@@ -1,5 +1,6 @@
 package com.support.ticket.service;
 
+import com.support.ticket.service.interfaces.ITicketService;
 import com.support.ticket.model.Ticket;
 import com.support.ticket.model.TicketComment;
 import com.support.ticket.model.TicketEvent;
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class TicketService {
+public class TicketService implements ITicketService {
 
     private final TicketRepository ticketRepository;
 
@@ -35,6 +36,7 @@ public class TicketService {
     }
 
     public Ticket addComment(String ticketId, String commentContent, String authorExternalId) {
+
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
         
@@ -46,12 +48,13 @@ public class TicketService {
                 "Comment added: " + commentContent,
                 authorExternalId
         );
+
         ticket.addEvent(commentEvent);
-        
         return ticketRepository.save(ticket);
     }
 
     public Ticket updateStatus(String ticketId, TicketStatus newStatus, String performedBy) {
+        
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found: " + ticketId));
         
@@ -67,6 +70,7 @@ public class TicketService {
                 "Status changed from " + oldStatus + " to " + newStatus,
                 performedBy
         );
+
         ticket.addEvent(statusEvent);
         
         if (newStatus == TicketStatus.CLOSED || newStatus == TicketStatus.CANCELLED) {
@@ -83,6 +87,7 @@ public class TicketService {
 
     public List<Ticket> findTickets(TicketStatus status, Priority priority, String customerExternalId, 
                                     LocalDateTime fromDate, LocalDateTime toDate) {
+                                        
         if (customerExternalId != null && !customerExternalId.isBlank()) {
             if (status != null && priority != null) {
                 return ticketRepository.findByCustomerExternalIdAndStatusAndPriority(customerExternalId, status, priority);
@@ -102,6 +107,7 @@ public class TicketService {
                     .filter(t -> fromDate == null || !t.getCreatedAt().isBefore(fromDate))
                     .filter(t -> toDate == null || !t.getCreatedAt().isAfter(toDate))
                     .collect(Collectors.toList());
+                    
         } else if (status != null) {
             List<Ticket> tickets = ticketRepository.findByStatus(status);
             return filterByDateRange(tickets, fromDate, toDate);
@@ -115,6 +121,7 @@ public class TicketService {
     }
 
     public List<Ticket> findTicketsByCustomer(String customerExternalId, TicketStatus status, Priority priority) {
+
         if (status != null && priority != null) {
             return ticketRepository.findByCustomerExternalIdAndStatusAndPriority(customerExternalId, status, priority);
         } else if (status != null) {
@@ -127,6 +134,7 @@ public class TicketService {
     }
 
     private List<Ticket> filterByDateRange(List<Ticket> tickets, LocalDateTime fromDate, LocalDateTime toDate) {
+
         if (fromDate == null && toDate == null) {
             return tickets;
         }
