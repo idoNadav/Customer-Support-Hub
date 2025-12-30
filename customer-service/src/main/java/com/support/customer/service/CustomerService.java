@@ -35,6 +35,9 @@ public class CustomerService implements ICustomerService {
         if (customerRepository.findByExternalId(externalId).isPresent()) {
             throw new IllegalArgumentException("Customer with externalId already exists: " + externalId);
         }
+        if (customerRepository.existsByEmail(customer.getEmail())) {
+            throw new IllegalArgumentException("Customer with email already exists: " + customer.getEmail());
+        }
         customer.setExternalId(externalId);
         customer.setOpenTicketCount(0);
         return customerRepository.save(customer);
@@ -64,7 +67,11 @@ public class CustomerService implements ICustomerService {
             customer.setName(customerUpdate.getName());
         }
         if (customerUpdate.getEmail() != null) {
-            customer.setEmail(customerUpdate.getEmail());
+            String newEmail = customerUpdate.getEmail();
+            if (!newEmail.equals(customer.getEmail()) && customerRepository.existsByEmail(newEmail)) {
+                throw new IllegalArgumentException("Customer with email already exists: " + newEmail);
+            }
+            customer.setEmail(newEmail);
         }
         
         return customerRepository.save(customer);

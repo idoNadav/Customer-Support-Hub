@@ -13,13 +13,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -32,6 +36,7 @@ public class CustomerController {
     private final ICustomerService customerService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_AGENT', 'ROLE_ADMIN')")
     public ResponseEntity<CustomerResponseDTO> createCustomer(
             @Valid @RequestBody CustomerCreateDTO customerCreateDTO,
             Authentication authentication) {
@@ -39,7 +44,25 @@ public class CustomerController {
         if (authentication == null) {
             authentication = SecurityContextHolder.getContext().getAuthentication();
         }
-        String externalId = getExternalIdFromAuthentication(authentication);
+
+        String jwtSub = getExternalIdFromAuthentication(authentication);
+        String externalId;
+
+        if (customerCreateDTO.getExternalId() != null && !customerCreateDTO.getExternalId().isBlank()) {
+            externalId = customerCreateDTO.getExternalId();
+
+            if (externalId.equals(jwtSub)) {
+                throw new IllegalArgumentException("ADMIN/AGENT cannot create themselves as CUSTOMER");
+            }
+
+            String lowerExternalId = externalId.toLowerCase();
+            if (lowerExternalId.startsWith("admin-") || lowerExternalId.startsWith("agent-")) {
+                throw new IllegalArgumentException("ADMIN/AGENT cannot create customers with externalId starting with 'admin-' or 'agent-'");
+            }
+        } else {
+            long randomNum = Math.abs(new Random().nextLong() % 1000000);
+            externalId = "customer" + randomNum;
+        }
 
         if (customerService.existsByExternalId(externalId)) {
             throw new ConflictException("Customer with externalId already exists: " + externalId);
@@ -48,7 +71,7 @@ public class CustomerController {
         Customer customer = customerMapper.toEntity(customerCreateDTO);
         Customer createdCustomer = customerService.createCustomer(externalId, customer);
         CustomerResponseDTO response = customerMapper.toDTO(createdCustomer);
-        log.info("Customer created: externalId={}", externalId);
+        log.info("Customer created: externalId={}, createdBy={}", externalId, jwtSub);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -83,6 +106,9 @@ public class CustomerController {
             log.info("Customer profile updated: externalId={}", externalId);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().contains("email already exists")) {
+                throw new ConflictException(e.getMessage());
+            }
             throw new ResourceNotFoundException("Customer not found");
         }
     }
@@ -118,6 +144,16 @@ public class CustomerController {
             return jwt.getClaimAsString("sub");
         }
         return authentication.getName();
+    }
+
+    private boolean hasAnyAdminOrAgentRole(Authentication authentication) {
+        if (authentication == null) {
+            return false;
+        }
+        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+        return authorities.stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority -> authority.equals("ROLE_ADMIN") || authority.equals("ROLE_AGENT"));
     }
 }
 

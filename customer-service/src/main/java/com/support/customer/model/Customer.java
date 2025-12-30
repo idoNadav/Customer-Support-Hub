@@ -11,7 +11,8 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "customers", indexes = {
-    @Index(name = "idx_external_id", columnList = "external_id", unique = true)
+    @Index(name = "idx_external_id", columnList = "external_id", unique = true),
+    @Index(name = "idx_email", columnList = "email", unique = true)
 })
 @Data
 @NoArgsConstructor
@@ -31,7 +32,7 @@ public class Customer {
     @NotBlank(message = "Name is required")
     private String name;
 
-    @Column(name = "email", nullable = false, length = 255)
+    @Column(name = "email", unique = true, nullable = false, length = 255)
     @NotBlank(message = "Email is required")
     @Email(message = "Email must be valid")
     private String email;

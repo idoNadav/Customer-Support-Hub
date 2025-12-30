@@ -50,6 +50,10 @@ public class SecurityRolesHelper {
         return hasAnyRole(authentication, rolesConfig.getCustomer().getRead());
     }
 
+    public boolean hasAnyAdminOrAgentRole(Authentication authentication) {
+        return hasAnyRole(authentication, "AGENT,ADMIN");
+    }
+
     private boolean hasAnyRole(Authentication authentication, String rolesString) {
 
         if (authentication == null || rolesString == null || rolesString.isBlank()) {

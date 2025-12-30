@@ -125,6 +125,7 @@ class CustomerControllerTest {
         createDTO = CustomerCreateDTO.builder()
                 .name("Dani Cohen")
                 .email("dani.cohen@example.com")
+                .externalId("customer123")
                 .build();
 
         responseDTO = CustomerResponseDTO.builder()
@@ -144,6 +145,15 @@ class CustomerControllerTest {
         return new JwtAuthenticationToken(jwt);
     }
 
+    private Authentication createMockAdminAuthentication(String externalId) {
+        Jwt jwt = Jwt.withTokenValue("token")
+                .header("alg", "HS256")
+                .claim("sub", externalId)
+                .claim("roles", Arrays.asList("ADMIN"))
+                .build();
+        return new JwtAuthenticationToken(jwt);
+    }
+
     @Test
     void createCustomer_Success_Returns201() throws Exception {
         when(customerService.existsByExternalId("customer123")).thenReturn(false);
@@ -151,7 +161,7 @@ class CustomerControllerTest {
         when(customerService.createCustomer(anyString(), any(Customer.class))).thenReturn(customer);
         when(customerMapper.toDTO(any(Customer.class))).thenReturn(responseDTO);
 
-        Authentication auth = createMockAuthentication("customer123");
+        Authentication auth = createMockAdminAuthentication("admin-456");
         AUTHENTICATION_HOLDER.set(auth);
 
         try {
@@ -179,7 +189,7 @@ class CustomerControllerTest {
     void createCustomer_DuplicateExternalId_Returns409() throws Exception {
         when(customerService.existsByExternalId("customer123")).thenReturn(true);
 
-        Authentication auth = createMockAuthentication("customer123");
+        Authentication auth = createMockAdminAuthentication("admin-456");
         
         try {
             AUTHENTICATION_HOLDER.set(auth);

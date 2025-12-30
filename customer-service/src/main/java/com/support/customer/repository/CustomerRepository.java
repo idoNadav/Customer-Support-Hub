@@ -10,6 +10,8 @@ import java.util.Optional;
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
     Optional<Customer> findByExternalId(String externalId);
+    Optional<Customer> findByEmail(String email);
+    boolean existsByEmail(String email);
     List<Customer> findByNameContainingIgnoreCase(String name);
     List<Customer> findByEmailContainingIgnoreCase(String email);
     List<Customer> findByExternalIdContaining(String externalId);

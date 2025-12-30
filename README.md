@@ -151,8 +151,7 @@ docker compose up --build
 
 Then run the application:
 ```bash
-cd app
-mvn spring-boot:run
+mvn spring-boot:run -pl app
 ```
 
 **Application runs on:** `http://localhost:8080`
@@ -190,6 +189,13 @@ The application uses **OAuth2 JWT-based authentication**:
 - **Enforcement**: JWT `sub` claim (mapped to `customer.externalId`) is used to verify ownership
 
 **Getting JWT Tokens:**
+
+> **Important Workflow:** 
+> 1. **First**: Login as **ADMIN** or **AGENT** to create customers
+> 2. **Then**: Create a customer using `POST /api/customers` with ADMIN/AGENT token
+> 3. **Finally**: Login as **CUSTOMER** using the `externalId` from the created customer
+> 
+> The login endpoint validates that the customer exists in the database for CUSTOMER role. AGENT and ADMIN roles do not require pre-registration.
 
 **Option 1: Login Endpoint (Recommended for Testing)**
 Use the `/api/auth/login` endpoint to generate tokens automatically:
@@ -259,16 +265,43 @@ In a **production system**, this should be replaced with:
 
 ### Prerequisites
 
-**Get JWT Token:**
-
-**Option 1: Use Login Endpoint (Easiest)**
+**Step 1: Login as ADMIN/AGENT to Create Customers**
 ```bash
-# Login and save token
-TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+# Login as ADMIN
+ADMIN_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"sub": "admin-456", "role": "ADMIN"}' | jq -r '.token')
+
+export ADMIN_TOKEN=$ADMIN_TOKEN
+```
+
+**Step 2: Create a Customer**
+```bash
+# Create customer (externalId is optional - will be auto-generated if not provided)
+curl -X POST http://localhost:8080/api/customers \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john.doe@example.com"
+  }'
+
+# Response includes the externalId (use it for customer login)
+# {
+#   "externalId": "customer123",
+#   ...
+# }
+```
+
+**Step 3: Login as CUSTOMER**
+
+```bash
+# Login as CUSTOMER using the externalId from Step 2
+CUSTOMER_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"sub": "customer123", "role": "CUSTOMER"}' | jq -r '.token')
 
-export JWT_TOKEN=$TOKEN
+export JWT_TOKEN=$CUSTOMER_TOKEN
 ```
 
 **Option 2: Manual Token Creation**
@@ -294,43 +327,71 @@ export JWT_TOKEN="<your-generated-jwt-token>"
 ### Authentication Endpoints
 
 #### Login (Get JWT Token)
+
+**Important:** For CUSTOMER role, the customer must be created first by ADMIN/AGENT. Use the `externalId` from the created customer as the `sub` value.
+
 ```bash
-# CUSTOMER role
+# Step 1: Login as ADMIN/AGENT (to create customers)
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "sub": "customer123",
+    "sub": "admin-456",
+    "role": "ADMIN"
+  }'
+
+# Step 2: After creating a customer, login as CUSTOMER
+# Use the externalId from the created customer
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sub": "customer123",  // Must match the externalId from created customer
     "role": "CUSTOMER"
   }'
 
-# AGENT role
+# AGENT role (for creating customers and managing tickets)
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "sub": "agent456",
+    "sub": "agent-456",
     "role": "AGENT"
-  }'
-
-# ADMIN role
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sub": "admin789",
-    "role": "ADMIN"
   }'
 ```
 
 ### Customer Endpoints
 
-#### 1. Create Customer (Self-Registration)
+#### 1. Create Customer (ADMIN/AGENT only)
+> **Note:** Only ADMIN and AGENT roles can create customers. CUSTOMER role cannot create accounts.
+
 ```bash
+# With explicit externalId
 curl -X POST http://localhost:8080/api/customers \
-  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Ido Cohen",
-    "email": "Ido.Cohen@example.com"
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "externalId": "customer123"
   }'
+
+# Without externalId (auto-generated UUID)
+curl -X POST http://localhost:8080/api/customers \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Jane Doe",
+    "email": "jane.doe@example.com"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "externalId": "customer123",  // Use this for CUSTOMER login
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "openTicketCount": 0
+}
 ```
 
 #### 2. Get Own Profile (CUSTOMER role)
