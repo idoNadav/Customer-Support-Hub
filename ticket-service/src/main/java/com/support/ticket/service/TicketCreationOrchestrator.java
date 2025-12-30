@@ -1,6 +1,7 @@
 package com.support.ticket.service;
 
 import com.support.customer.service.interfaces.ICustomerService;
+import com.support.ticket.constants.TicketEventDescriptions;
 import com.support.ticket.service.interfaces.ITicketCreationOrchestrator;
 import com.support.ticket.service.interfaces.ITicketService;
 import com.support.ticket.model.Ticket;
@@ -45,7 +46,7 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
         
         TicketEvent createdEvent = new TicketEvent(
                 TicketEventType.CREATED,
-                "Ticket created",
+                TicketEventDescriptions.TICKET_CREATED,
                 customerExternalId
         );
         ticket.addEvent(createdEvent);
@@ -53,7 +54,7 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
         Ticket savedTicket = ticketService.save(ticket);
 
         try {
-            syncTicketToCustomer(savedTicket, "Ticket count incremented in MySQL");
+            syncTicketToCustomer(savedTicket, TicketEventDescriptions.TICKET_COUNT_INCREMENTED);
             log.info("Ticket created successfully: ticketId={}, customerId={}, idempotencyKey={}", 
                 savedTicket.getId(), customerExternalId, idempotencyKey);
         } catch (Exception e) {
@@ -75,7 +76,7 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
         }
 
         try {
-            syncTicketToCustomer(ticket, "Ticket count incremented in MySQL (recovered)");
+            syncTicketToCustomer(ticket, TicketEventDescriptions.TICKET_COUNT_INCREMENTED_RECOVERED);
             log.info("Successfully recovered ticket: ticketId={}, customerId={}", 
                 ticket.getId(), customerExternalId);
         } catch (Exception e) {
