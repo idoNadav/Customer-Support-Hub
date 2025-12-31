@@ -43,7 +43,7 @@ public class TicketService implements ITicketService {
         TicketComment comment = new TicketComment(commentContent, authorExternalId);
         ticket.addComment(comment);
         
-        TicketEvent commentEvent = new TicketEvent(
+        TicketEvent commentEvent = createTicketEvent(
                 TicketEventType.COMMENT_ADDED,
                 "Comment added: " + commentContent,
                 authorExternalId
@@ -65,7 +65,7 @@ public class TicketService implements ITicketService {
         
         ticket.setStatus(newStatus);
         
-        TicketEvent statusEvent = new TicketEvent(
+        TicketEvent statusEvent = createTicketEvent(
                 TicketEventType.STATUS_CHANGED,
                 "Status changed from " + oldStatus + " to " + newStatus,
                 performedBy
@@ -74,7 +74,7 @@ public class TicketService implements ITicketService {
         ticket.addEvent(statusEvent);
         
         if (newStatus == TicketStatus.CLOSED || newStatus == TicketStatus.CANCELLED) {
-            TicketEvent closedEvent = new TicketEvent(
+            TicketEvent closedEvent = createTicketEvent(
                     TicketEventType.CLOSED,
                     "Ticket " + newStatus.name().toLowerCase(),
                     performedBy
@@ -151,6 +151,10 @@ public class TicketService implements ITicketService {
             filtered.add(ticket);
         }
         return filtered;
+    }
+
+    private TicketEvent createTicketEvent(TicketEventType eventType, String description, String performedBy) {
+        return new TicketEvent(eventType, description, performedBy);
     }
 }
 

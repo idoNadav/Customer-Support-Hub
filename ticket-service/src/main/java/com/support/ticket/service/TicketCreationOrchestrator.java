@@ -44,13 +44,12 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
 
         ticket.setIdempotencyKey(idempotencyKey);
         
-        TicketEvent createdEvent = new TicketEvent(
+        TicketEvent createdEvent = createTicketEvent(
                 TicketEventType.CREATED,
                 TicketEventDescriptions.TICKET_CREATED,
                 customerExternalId
         );
         ticket.addEvent(createdEvent);
-
         Ticket savedTicket = ticketService.save(ticket);
 
         try {
@@ -93,7 +92,7 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
         customerService.incrementOpenTicketCount(customerExternalId);
         ticket.setSyncStatus(SyncStatus.SYNCED);
         
-        TicketEvent syncedEvent = new TicketEvent(
+        TicketEvent syncedEvent = createTicketEvent(
                 TicketEventType.STATUS_CHANGED,
                 eventDescription,
                 customerExternalId
@@ -101,6 +100,10 @@ public class TicketCreationOrchestrator implements ITicketCreationOrchestrator {
 
         ticket.addEvent(syncedEvent);
         ticketService.save(ticket);
+    }
+
+    private TicketEvent createTicketEvent(TicketEventType eventType, String description, String performedBy) {
+        return new TicketEvent(eventType, description, performedBy);
     }
 }
 
