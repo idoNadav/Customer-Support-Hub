@@ -47,7 +47,7 @@ When a ticket is created:
 
 **1. Orchestrator-Based Saga**
 - `TicketCreationOrchestrator` coordinates the two-phase operation
-- Phase 1: Save ticket to MongoDB (always succeeds first)
+- Phase 1: Save ticket to MongoDB (with retry: 3 attempts with exponential backoff, optional cache can be added for performance)
 - Phase 2: Increment customer count in MySQL (may fail)
 
 **2. Idempotency Protection**
@@ -68,7 +68,7 @@ When a ticket is created:
 - Ensures eventual consistency
 
 **5. Resilience Mechanisms**
-- **Retry**: `@Retryable` on MySQL operations (3 attempts with exponential backoff)
+- **Retry**: `@Retryable` on both MongoDB and MySQL operations (3 attempts with exponential backoff)
 - **Circuit Breaker**: Resilience4j circuit breaker prevents resource waste when MySQL is consistently down
 - **Fail Fast**: Circuit breaker opens after 50% failure rate, preventing unnecessary retries
 
@@ -130,6 +130,13 @@ When a ticket is created:
 - **Result**: Returns existing ticket (idempotent)
 - **Data safety**: No duplicate tickets created
 - **Note**: If no key provided, each request gets a unique auto-generated key
+
+#### Scenario 5: MongoDB Fails During Ticket Creation
+- **What happens**: MongoDB save operation fails (connection timeout, network issue, etc.)
+- **Retry mechanism**: Automatic retry (3 attempts with exponential backoff: 100ms, 200ms, 400ms)
+- **User sees**: Error response (500) only if all retries fail
+- **Data safety**: If MongoDB save fails after all retries, ticket is not created (request fails)
+- **Note**: Optional cache layer can be added to improve performance and reduce MongoDB load
 
 
 ### Justification for Eventual Consistency

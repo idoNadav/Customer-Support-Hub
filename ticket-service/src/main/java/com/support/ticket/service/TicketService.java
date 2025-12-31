@@ -9,6 +9,8 @@ import com.support.ticket.model.enums.TicketEventType;
 import com.support.ticket.model.enums.TicketStatus;
 import com.support.ticket.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,6 +25,10 @@ public class TicketService implements ITicketService {
 
     private final TicketRepository ticketRepository;
 
+    @Retryable(
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100, multiplier = 2)
+    )
     public Ticket save(Ticket ticket) {
         return ticketRepository.save(ticket);
     }

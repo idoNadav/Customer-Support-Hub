@@ -178,5 +178,56 @@ class TicketRecoveryIntegrationTest {
         Ticket ticket = ticketRepository.findById(failedTicket.getId()).orElseThrow();
         assertThat(ticket.getSyncStatus()).isEqualTo(SyncStatus.FAILED);
     }
+
+    @Test
+    void testMongoDBRetryMechanism() {
+        String customerExternalId = "customer-mongodb-retry-001";
+
+        Customer customer = Customer.builder()
+                .externalId(customerExternalId)
+                .name("MongoDB Retry Test")
+                .email("mongodb.retry@example.com")
+                .openTicketCount(0)
+                .build();
+        customerRepository.save(customer);
+
+        Ticket ticket = Ticket.builder()
+                .customerExternalId(customerExternalId)
+                .title("MongoDB Retry Test Ticket")
+                .description("Testing MongoDB retry mechanism with Testcontainers")
+                .status(TicketStatus.OPEN)
+                .priority(Priority.HIGH)
+                .syncStatus(SyncStatus.SYNCED)
+                .idempotencyKey("mongodb-retry-key-001")
+                .build();
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+        assertThat(savedTicket).isNotNull();
+        assertThat(savedTicket.getId()).isNotNull();
+        assertThat(savedTicket.getTitle()).isEqualTo("MongoDB Retry Test Ticket");
+
+        Ticket retrievedTicket = ticketRepository.findById(savedTicket.getId()).orElseThrow();
+        assertThat(retrievedTicket.getTitle()).isEqualTo("MongoDB Retry Test Ticket");
+        assertThat(retrievedTicket.getSyncStatus()).isEqualTo(SyncStatus.SYNCED);
+        assertThat(retrievedTicket.getCustomerExternalId()).isEqualTo(customerExternalId);
+
+        Ticket updatedTicket = Ticket.builder()
+                .id(savedTicket.getId())
+                .customerExternalId(customerExternalId)
+                .title("Updated Title")
+                .description("Updated description")
+                .status(TicketStatus.IN_PROGRESS)
+                .priority(Priority.HIGH)
+                .syncStatus(SyncStatus.SYNCED)
+                .idempotencyKey("mongodb-retry-key-001")
+                .build();
+
+        Ticket savedUpdatedTicket = ticketRepository.save(updatedTicket);
+        assertThat(savedUpdatedTicket.getTitle()).isEqualTo("Updated Title");
+        assertThat(savedUpdatedTicket.getStatus()).isEqualTo(TicketStatus.IN_PROGRESS);
+
+        Ticket finalTicket = ticketRepository.findById(savedTicket.getId()).orElseThrow();
+        assertThat(finalTicket.getTitle()).isEqualTo("Updated Title");
+    }
 }
 
